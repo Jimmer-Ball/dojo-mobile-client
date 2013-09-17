@@ -1,0 +1,923 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>mobile-web</artifactId>
+    <name>Mobile API web application</name>
+    <packaging>war</packaging>
+    <description>
+        JEE6 web application archive. Here we build the dev and release versions of the application
+        and we also perform integration testing on bits of the application using the embedded
+        EJB3.1 EJBContainer, which actually resolves to an embedded Glassfish instance behind the scenes.
+    </description>
+
+    <parent>
+        <groupId>com.timepoorprogrammer.mobile.api</groupId>
+        <artifactId>mobile-api</artifactId>
+        <version>${versionNumber}</version>
+    </parent>
+
+    <properties>
+        <!--
+        Release settings used by the packaged/built archive.  These find their way into the persistence XML
+        bundled up with the built application by the custom ${ant.build.file}.  To understand these settings, look at
+        src/main/packaging-only-resources/META-INF/persistence.xml and test/resources/domain/config/domain.xml
+        to see how they are used.  These values match up with your co-located glassfish connection pool setup.
+        -->
+        <release.database.read.datasource>MYSQLReadPool-ds</release.database.read.datasource>
+        <release.database.write.datasource>MYSQLWritePool-ds</release.database.write.datasource>
+        <release.database.audit.datasource>MYSQLAuditPool-ds</release.database.audit.datasource>
+        <release.database.state.datasource>MYSQLStatePool-ds</release.database.state.datasource>
+        <release.log.level>INFO</release.log.level>
+
+        <!--
+        Integration settings used by the EJBContainer implementation.  With JEE6 you can use the EJBContainer
+        to test "parts" of your application without needing to have built the whole archive.  These resources are
+        applied by the file src/test/resources/META-INF/persistence.xml when integration testing your EJB+ components.
+        This persistence.xml uses the default pool provided by embedded Glassfish, which uses the default database
+        Derby for JTA, which is an in-memory database like HSQL.
+        -->
+        <integration.ddl.generation>create-tables</integration.ddl.generation>
+        <integration.log.level>INFO</integration.log.level>
+
+        <!--
+        Debug settings used by embedded glassfish when debugging the final built application.  Starting embedded GF
+        from the maven menu on the right-hand-side means deploying the built WAR archive to embedded glassfish, and
+        using the debugger to step through what is going on.  For this to be meaningful, embedded glassfish needs to
+        be using the same database details as the expected release, hence the overlap.  Look at the file
+        test/resources/domain/config/domain.xml to see the settings a truly representative embedded glassfish server
+        used to mimic the conditions of the released software.
+
+        You should only ever have to change these settings if you didn't follow the instructions on the project WIKI
+        in terms of setting up a co-located Glassfish instance or you need to use a different database.
+        -->
+        <debug.database.datasource>com.mysql.jdbc.jdbc2.optional.MysqlDataSource</debug.database.datasource>
+
+        <debug.database.read.user>sa</debug.database.read.user>
+        <debug.database.read.password>sa</debug.database.read.password>
+        <debug.database.read.port>3306</debug.database.read.port>
+        <debug.database.read.dbname>mobile_readdb</debug.database.read.dbname>
+        <debug.database.read.servername>localhost</debug.database.read.servername>
+
+        <debug.database.write.user>sa</debug.database.write.user>
+        <debug.database.write.password>sa</debug.database.write.password>
+        <debug.database.write.port>3306</debug.database.write.port>
+        <debug.database.write.dbname>mobile_writedb</debug.database.write.dbname>
+        <debug.database.write.servername>localhost</debug.database.write.servername>
+
+        <debug.database.audit.user>sa</debug.database.audit.user>
+        <debug.database.audit.password>sa</debug.database.audit.password>
+        <debug.database.audit.port>3306</debug.database.audit.port>
+        <debug.database.audit.dbname>mobile_auditdb</debug.database.audit.dbname>
+        <debug.database.audit.servername>localhost</debug.database.audit.servername>
+
+        <debug.database.state.user>sa</debug.database.state.user>
+        <debug.database.state.password>sa</debug.database.state.password>
+        <debug.database.state.port>3306</debug.database.state.port>
+        <debug.database.state.dbname>mobile_statedb</debug.database.state.dbname>
+        <debug.database.state.servername>localhost</debug.database.state.servername>
+
+        <debug.iiop.port>3700</debug.iiop.port>
+        <debug.iiop.ssl.port>3820</debug.iiop.ssl.port>
+        <debug.iiop.mutual.port>3920</debug.iiop.mutual.port>
+        <debug.jmx.port>8686</debug.jmx.port>
+        <debug.jms.port>7676</debug.jms.port>
+        <debug.debugger.port>9009</debug.debugger.port>
+        <debug.osgi.port>6666</debug.osgi.port>
+        <debug.http.port>8080</debug.http.port>
+        <debug.admin.port>4848</debug.admin.port>
+
+        <!-- Properties used by the custom ${ant.build.file} for DOJO minimised release packaging -->
+        <module.basedir>${basedir}</module.basedir>
+        <target.dir>${project.build.directory}</target.dir>
+        <unpacked.war.name>${project.artifactId}-${project.version}</unpacked.war.name>
+        <unpacked.war.dir>${target.dir}${file.separator}${unpacked.war.name}</unpacked.war.dir>
+        <target.classes.dir>${target.dir}${file.separator}classes</target.classes.dir>
+        <ui.src>${basedir}${file.separator}src${file.separator}main${file.separator}ui</ui.src>
+        <dojo.src>${target.dir}${file.separator}dojo-src</dojo.src>
+        <dojo.layer.name>mobilehr</dojo.layer.name>
+        <dojo.release.name>mobile</dojo.release.name>
+        <dojo.release.dir>${target.dir}${file.separator}minimised_dojo</dojo.release.dir>
+
+        <!-- Default build artifact to deploy when running up the application either in embedded or co-located GF -->
+        <glassfish.archive>target/${project.artifactId}-${project.version}</glassfish.archive>
+
+        <!-- Tell Sonar that it will have to launch the execution of the unit tests and the coverage tool for our
+             unit tests, we run the Sonar Maven plugin post build to analyse the unit tests and the integration
+             coverage we generate with the JaCoCo agent -->
+        <sonar.dynamicAnalysis>true</sonar.dynamicAnalysis>
+        <!-- Ensure Sonar uses JaCoCo as the coverage plugin (it is by default but include just to be %100 as a
+             user may have altered this manually in the Sonar settings) -->
+        <sonar.core.codeCoveragePlugin>jacoco</sonar.core.codeCoveragePlugin>
+        <!-- Set the itReportPath for Sonar so that the JaCoCoItSensor picks up our exec file and displays its
+             coverage content (see http://docs.codehaus.org/display/SONAR/Code+Coverage+by+Integration+Tests) for
+             details on how this actually works -->
+        <sonar.jacoco.itReportPath>${project.build.directory}/jacoco-integration.exec</sonar.jacoco.itReportPath>
+        <!-- The proper released version of the JaCoCo plugin we are using to analyse the integration test coverage -->
+        <jacoco.plugin.version>0.5.9.201207300726</jacoco.plugin.version>
+    </properties>
+
+    <!-- Common build actions section -->
+    <build>
+        <resources>
+            <!-- We need to pickup our mobile application properties as placed in the resources directory to
+                 provide version details and to provide details of our XML schema -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>mobile.properties</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+
+        <testResources>
+            <!-- When integration testing, we setup a persistence.xml that can be used by embedded Glassfish
+            (as deployed indirectly via the EJBContainer), so under the test-classes/META-INF location -->
+            <testResource>
+                <directory>src/test/resources</directory>
+                <includes>
+                    <include>**/META-INF/persistence.xml</include>
+                </includes>
+                <filtering>true</filtering>
+            </testResource>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <includes>
+                    <include>**/log4j.xml</include>
+                </includes>
+            </testResource>
+
+            <!-- When debugging using embedded Glassfish, we need a proper setup which can use MySQL, and can use
+                 the full domain settings required, almost like a co-located Glassfish, see the domain.xml for details
+                 and amend the embedded settings to amend the connection pool settings applied -->
+            <testResource>
+                <!-- Do the filtering of the domain XML -->
+                <directory>src/test/resources</directory>
+                <includes>
+                    <include>**/domain/config/domain.xml</include>
+                </includes>
+                <filtering>true</filtering>
+            </testResource>
+            <testResource>
+                <!-- Don't filter the rest of what the domain needs particularly the connection jar -->
+                <directory>src/test/resources</directory>
+                <includes>
+                    <include>**/domain/config/server.policy</include>
+                    <include>**/domain/docroot/index.html</include>
+                    <include>**/domain/lib/mysql*</include>
+                </includes>
+            </testResource>
+        </testResources>
+
+        <plugins>
+            <!-- EJB 3.0 and 3.1 are allowed -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-ejb-plugin</artifactId>
+                <version>2.3</version>
+                <configuration>
+                    <ejbVersion>3.1</ejbVersion>
+                </configuration>
+            </plugin>
+            <!-- Exclude integration tests from being run at same time as unit tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.10</version>
+                <configuration>
+                    <excludes>
+                        <exclude>it/**/*.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <!-- Run integration tests when we get to the right build goal using a suite so we only start off
+                 embedded Glassfish the once. -->
+            <plugin>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>2.10</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <includes>
+                        <include>it/**/*Suite.java</include>
+                    </includes>
+                    <argLine>-Xms256m -Xmx1024m -XX:MaxPermSize=512m</argLine>
+                </configuration>
+            </plugin>
+            <!-- Embedded Glassfish setup for debugging the deploy-able application as needed -->
+            <plugin>
+                <groupId>org.glassfish</groupId>
+                <artifactId>maven-embedded-glassfish-plugin</artifactId>
+                <version>3.1.1</version>
+                <configuration>
+                    <app>${glassfish.archive}</app>
+                    <contextRoot>mobilehr</contextRoot>
+                    <ports>
+                        <http-listener>${debug.http.port}</http-listener>
+                    </ports>
+                    <autoDelete>true</autoDelete>
+                    <instanceRoot>target/test-classes/domain</instanceRoot>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.osgi</groupId>
+                        <artifactId>org.osgi.core</artifactId>
+                        <version>4.2.0</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <!-- Copy down the dojotoolkit source dependency content into the target directory, if not
+                 already done.  So, only a clean will result in this occurring every time the project
+                 is built. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>2.5</version>
+                <executions>
+                    <execution>
+                        <id>get-hold-of-dojo-src</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.dojotoolkit</groupId>
+                                    <artifactId>dojo-src</artifactId>
+                                    <version>1.7.2</version>
+                                    <type>zip</type>
+                                </artifactItem>
+                            </artifactItems>
+                            <outputDirectory>${target.dir}/dojo-src</outputDirectory>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- The "dev" profile used for building and running the UNPACKED war.  To activate this profile open
+            the right-hand-side maven projects panel and tick "dev" under Profiles, and untick any others. Do this
+            before trying to "package" when doing development to build the unpacked archive. -->
+        <profile>
+            <id>dev</id>
+            <properties>
+                <glassfish.archive>target/${project.artifactId}-${project.version}</glassfish.archive>
+            </properties>
+            <build>
+                <directory>target</directory>
+                <finalName>${project.artifactId}-${project.version}</finalName>
+                <plugins>
+                    <!-- Copy in the unpacked dojo-src into the target unpacked war if not already there and
+                         copy in the ui and client part each time to account for front-end changes.  This
+                          custom behaviour is invoked just before the war:war goal. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <execution>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <!-- This target holds conditional logic for checking if dojo-src
+                                          already exists in the unpacked WAR archive, so only copies
+                                          the DOJO distribution once, and not every time package is run -->
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="create.dev.packaging"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                            <!-- Start a general purpose memcached node before we ever get to our integration tests
+                            in modules further up the project dependency tree, like mobile-web and mobile-system-tests -->
+                            <execution>
+                                <id>start_general_memcached</id>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="start.general.memcached"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                            <!-- Start up a second memcached server that is dedicated to mobile user service state -->
+                            <execution>
+                                <id>start_service_state_memcached</id>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="start.state.memcached"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Simple war plugin as all our unpacked WAR resources are managed by the ant target above -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-war-plugin</artifactId>
+                        <version>2.1.1</version>
+                        <configuration>
+                            <webXml>src/main/webapp/WEB-INF/web.xml</webXml>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- A "snapshot" profile for the project that builds and tests the minimised and packed archive. This
+             needs to be run by the continuous integration service Jenkins, to create snapshot builds.  It is
+             also possible to run system tests under this profile here too, locally from IntelliJ.  Simply
+             use the right-hand-side maven menu to amend your profile from "dev" to "snapshot", clean and
+             verify -->
+        <profile>
+            <id>snapshot</id>
+            <properties>
+                <release.ddl.generation>none</release.ddl.generation>
+                <glassfish.archive>target/${project.artifactId}-${project.version}.war
+                </glassfish.archive>
+            </properties>
+            <build>
+                <directory>target</directory>
+                <finalName>${project.artifactId}-${project.version}</finalName>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <!-- Start memcached general instance before we ever get to our integration tests in modules further
+                                 up the project dependency tree, like mobile-web and mobile-system-tests -->
+                            <execution>
+                                <id>start_general_memcached</id>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="start.general.memcached"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                            <!-- Start up a second memcached server that only services mobile user service state -->
+                            <execution>
+                                <id>start_service_state_memcached</id>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="start.state.memcached"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                            <!-- Create the optimised, minimised, packed UI and client at the prepare-package stage in
+                                 the build output directory ready for treatment as extra resources at the war:war
+                                 stage -->
+                            <execution>
+                                <id>create_release_packaging</id>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="create.release.packaging"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- WAR packaging for a "release" build copies in the optimised, minimised, packed UI
+                         resources produced by the create.release.packaging ant target at the war:war stage. Note
+                         some of the locations stuff is copied from is NOT the built output directories of a DOJO
+                         build due to DOJO build system bugs with i18n bundles and CSS minimisation in DOJO 1.7.2 -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-war-plugin</artifactId>
+                        <version>2.1.1</version>
+                        <configuration>
+                            <webXml>src/main/webapp/WEB-INF/web.xml</webXml>
+                            <webResources>
+                                <!-- A) Minimised dojo and its i18n+cldr support copied from built location, that holds the mobile UI code too -->
+                                <resource>
+                                    <directory>${dojo.release.dir}${file.separator}${dojo.release.name}</directory>
+                                    <includes>
+                                        <include>**/dojo/dojo.js</include>
+                                        <include>**/dojo/dojo.js.gz</include>
+                                        <include>**/dojo/nls/**</include>
+                                        <include>**/dojo/cldr/**</include>
+                                        <include>**/dojo/resources/**</include>
+                                    </includes>
+                                </resource>
+                                <!-- B) All dojox mobile CSS styling as copied from pre-build location -->
+                                <resource>
+                                    <directory>${dojo.release.dir}${file.separator}${dojo.release.name}</directory>
+                                    <includes>
+                                        <include>**/dojox/mobile/themes/**</include>
+                                    </includes>
+                                </resource>
+                                <!-- C) mobile images and CSS copied from built location -->
+                                <resource>
+                                    <directory>${dojo.release.dir}${file.separator}${dojo.release.name}</directory>
+                                    <includes>
+                                        <include>**/${dojo.layer.name}/images/**</include>
+                                        <include>**/${dojo.layer.name}/${dojo.layer.name}.css</include>
+                                        <include>**/${dojo.layer.name}/${dojo.layer.name}.css.gz</include>
+                                    </includes>
+                                </resource>
+                                <!-- D) NLS i18n bundle files for UI, as copied from pre-build location -->
+                                <resource>
+                                    <directory>${ui.src}</directory>
+                                    <includes>
+                                        <include>**/${dojo.layer.name}/nls/**</include>
+                                    </includes>
+                                </resource>
+                            </webResources>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- A "devRelease" profile for the project that builds and tests the minimised and packed archive in
+             development release form. This can be run by continuous integration service Jenkins, to create
+             development release builds.  It is also possible to run system tests under this profile here too,
+             locally from IntelliJ.  Simply use the right-hand-side maven menu to amend your profile from "dev" to
+             "devRelease", clean and verify -->
+        <profile>
+            <id>devRelease</id>
+            <properties>
+                <release.ddl.generation>none</release.ddl.generation>
+                <glassfish.archive>target/${project.artifactId}-${project.version}.war
+                </glassfish.archive>
+            </properties>
+            <build>
+                <directory>target</directory>
+                <finalName>${project.artifactId}-${project.version}</finalName>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <!-- Create the optimised, minimised, packed UI and client at the prepare-package stage in
+                                 the build output directory ready for treatment as extra resources at the war:war
+                                 stage -->
+                            <execution>
+                                <id>create_release_packaging</id>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="create.release.packaging"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                            <!-- Start memcached general instance before we ever get to our integration tests in modules further
+                                 up the project dependency tree, like mobile-web and mobile-system-tests -->
+                            <execution>
+                                <id>start_general_memcached</id>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="start.general.memcached"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                            <!-- Start up a second memcached server that only services mobile user service state -->
+                            <execution>
+                                <id>start_service_state_memcached</id>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="start.state.memcached"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- WAR packaging for a "release" build copies in the optimised, minimised, packed UI
+                         resources produced by the create.release.packaging ant target at the war:war stage. Note
+                         some of the locations stuff is copied from is NOT the built output directories of a DOJO
+                         build due to DOJO build system bugs with i18n bundles and CSS minimisation in DOJO 1.7.2 -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-war-plugin</artifactId>
+                        <version>2.1.1</version>
+                        <configuration>
+                            <webXml>src/main/webapp/WEB-INF/web.xml</webXml>
+                            <webResources>
+                                <!-- A) Minimised dojo and its i18n+cldr support copied from built location, that holds the mobile UI code too -->
+                                <resource>
+                                    <directory>${dojo.release.dir}${file.separator}${dojo.release.name}</directory>
+                                    <includes>
+                                        <include>**/dojo/dojo.js</include>
+                                        <include>**/dojo/dojo.js.gz</include>
+                                        <include>**/dojo/nls/**</include>
+                                        <include>**/dojo/cldr/**</include>
+                                        <include>**/dojo/resources/**</include>
+                                    </includes>
+                                </resource>
+                                <!-- B) All dojox mobile CSS styling as copied from pre-build location -->
+                                <resource>
+                                    <directory>${dojo.release.dir}${file.separator}${dojo.release.name}</directory>
+                                    <includes>
+                                        <include>**/dojox/mobile/themes/**</include>
+                                    </includes>
+                                </resource>
+                                <!-- C) mobile images and CSS copied from built location -->
+                                <resource>
+                                    <directory>${dojo.release.dir}${file.separator}${dojo.release.name}</directory>
+                                    <includes>
+                                        <include>**/${dojo.layer.name}/images/**</include>
+                                        <include>**/${dojo.layer.name}/${dojo.layer.name}.css</include>
+                                        <include>**/${dojo.layer.name}/${dojo.layer.name}.css.gz</include>
+                                    </includes>
+                                </resource>
+                                <!-- D) NLS i18n bundle files for UI, as copied from pre-build location -->
+                                <resource>
+                                    <directory>${ui.src}</directory>
+                                    <includes>
+                                        <include>**/${dojo.layer.name}/nls/**</include>
+                                    </includes>
+                                </resource>
+                            </webResources>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- The Sonar profile generates test coverage for the integration tests using the JaCoCo plugin. The plugin
+             runs a java agent alongside our integration tests that gathers coverage information in an .exec file
+             which can be analysed by the Sonar Maven plugin when it runs analysis on the project. -->
+        <profile>
+            <id>sonar</id>
+            <properties>
+                <release.ddl.generation>none</release.ddl.generation>
+                <glassfish.archive>target/${project.artifactId}-${project.version}.war
+                </glassfish.archive>
+            </properties>
+            <build>
+                <directory>target</directory>
+                <finalName>${project.artifactId}-${project.version}</finalName>
+                <plugins>
+                    <!-- Run integration tests when we get to the right build goal using a suite so we only start off
+                         embedded Glassfish the once. -->
+                    <plugin>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>2.10</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <includes>
+                                <include>it/**/*Suite.java</include>
+                            </includes>
+                            <!-- The jacoco.agent.argLine will be generated at build time by the JaCoCo Maven plugin,
+                                 this is used to run the JaCoCo java agent during our integration tests to gather
+                                 coverage information -->
+                            <argLine>-Xms256m -Xmx1024m -XX:MaxPermSize=512m ${jacoco.agent.argLine}</argLine>
+                            <!-- Dump the XML reports produced by the tests into the surefire reports directory so we
+                                 can display the success and max times statistics for the integration tests
+                                 (currently missing from Sonars built in Integration Test Coverage widget)-->
+                            <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+                        </configuration>
+                    </plugin>
+                    <!-- JaCoCo plugin we use to gather test coverage information from the integration tests run by the
+                         failsafe plugin. A java agent is set on the JVM as we launch those tests and this agent then
+                         dumps the coverage info to an .exec file that can be analysed by the Sonar code quality
+                         platform to give us great information on our test coverage and overall quality. -->
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>${jacoco.plugin.version}</version>
+                        <configuration>
+                            <!-- Define the argLine property that we use in our falisafe plugin -->
+                            <propertyName>jacoco.agent.argLine</propertyName>
+
+                            <!-- File to output the integration test coverage to, notice we are using the sonar
+                                 integration test report path property to do this instructs Sonar to use the file
+                                 output by the plugin with the JaCoCoItSensor that analyses our coverage results -->
+                            <destFile>${sonar.jacoco.itReportPath}</destFile>
+                            <!-- File to use when generating the coverage report with the plugins report goal -->
+                            <dataFile>${sonar.jacoco.itReportPath}</dataFile>
+                        </configuration>
+                        <executions>
+                            <!-- This goal sets the JaCoCo java agent up ready to collect info from the integration
+                                 tests as they run. -->
+                            <execution>
+                                <id>agent</id>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <!-- This goal generates a HTML/XML coverage report that we can use with the Jenkins JaCoCo plugin
+                                 to show our coverage on the build server after the integration tests are run. This report also
+                                 lets use view the coverage locally without depending on Jenkins or Sonar. -->
+                            <execution>
+                                <id>report</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <!-- Create the optimised, minimised, packed UI and client at the prepare-package stage in
+                                 the build output directory ready for treatment as extra resources at the war:war
+                                 stage -->
+                            <execution>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="create.release.packaging"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                            <!-- Start memcached general instance before we ever get to our integration tests in modules further
+                                 up the project dependency tree, like mobile-web and mobile-system-tests -->
+                            <execution>
+                                <id>start_general_memcached</id>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="start.general.memcached"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                            <!-- Start up a second memcached server that only services mobile user service state -->
+                            <execution>
+                                <id>start_service_state_memcached</id>
+                                <phase>prepare-package</phase>
+                                <configuration>
+                                    <target>
+                                        <ant antfile="${ant.build.file}">
+                                            <target name="start.state.memcached"/>
+                                        </ant>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- WAR packaging for a "release" build copies in the optimised, minimised, packed UI
+                         resources produced by the create.release.packaging ant target at the war:war stage. Note
+                         some of the locations stuff is copied from is NOT the built output directories of a DOJO
+                         build due to DOJO build system bugs with i18n bundles and CSS minimisation in DOJO 1.7.2 -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-war-plugin</artifactId>
+                        <version>2.1.1</version>
+                        <configuration>
+                            <webXml>src/main/webapp/WEB-INF/web.xml</webXml>
+                            <webResources>
+                                <!-- A) Minimised dojo and its i18n+cldr support copied from built location, that holds the mobile UI code too -->
+                                <resource>
+                                    <directory>${dojo.release.dir}${file.separator}${dojo.release.name}</directory>
+                                    <includes>
+                                        <include>**/dojo/dojo.js</include>
+                                        <include>**/dojo/dojo.js.gz</include>
+                                        <include>**/dojo/nls/**</include>
+                                        <include>**/dojo/cldr/**</include>
+                                        <include>**/dojo/resources/**</include>
+                                    </includes>
+                                </resource>
+                                <!-- B) All dojox mobile CSS styling as copied from pre-build location -->
+                                <resource>
+                                    <directory>${dojo.release.dir}${file.separator}${dojo.release.name}</directory>
+                                    <includes>
+                                        <include>**/dojox/mobile/themes/**</include>
+                                    </includes>
+                                </resource>
+                                <!-- C) mobile images and CSS copied from built location -->
+                                <resource>
+                                    <directory>${dojo.release.dir}${file.separator}${dojo.release.name}</directory>
+                                    <includes>
+                                        <include>**/${dojo.layer.name}/images/**</include>
+                                        <include>**/${dojo.layer.name}/${dojo.layer.name}.css</include>
+                                        <include>**/${dojo.layer.name}/${dojo.layer.name}.css.gz</include>
+                                    </includes>
+                                </resource>
+                                <!-- D) NLS i18n bundle files for UI, as copied from pre-build location -->
+                                <resource>
+                                    <directory>${ui.src}</directory>
+                                    <includes>
+                                        <include>**/${dojo.layer.name}/nls/**</include>
+                                    </includes>
+                                </resource>
+                            </webResources>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <dependencies>
+        <!-- Common module -->
+        <dependency>
+            <groupId>com.timepoorprogrammer</groupId>
+            <artifactId>common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.timepoorprogrammer.mobile</groupId>
+            <artifactId>mobile-common</artifactId>
+        </dependency>
+        <!-- READ database -->
+        <dependency>
+            <groupId>com.timepoorprogrammer.mobile</groupId>
+            <artifactId>mobile-read-database</artifactId>
+        </dependency>
+        <!-- WRITE database -->
+        <dependency>
+            <groupId>com.timepoorprogrammer.mobile</groupId>
+            <artifactId>mobile-write-database</artifactId>
+        </dependency>
+        <!-- AUDIT database -->
+        <dependency>
+            <groupId>com.timepoorprogrammer.mobile</groupId>
+            <artifactId>mobile-audit-database</artifactId>
+        </dependency>
+        <!-- STATE database -->
+        <dependency>
+            <groupId>com.timepoorprogrammer.mobile</groupId>
+            <artifactId>mobile-state-database</artifactId>
+        </dependency>
+
+        <!-- SNMP core library -->
+        <dependency>
+            <groupId>com.timepoorprogrammer</groupId>
+            <artifactId>snmp-core</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- joda time -->
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+            <version>1.6.2</version>
+        </dependency>
+
+        <!-- Encryption and codec dependency (Our application requires extra-strength encryption activated) -->
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.5</version>
+        </dependency>
+        <!-- Scannotation library from Bill Burke. The newer library called Reflections (0.9.5) cannot cope
+             with spaces in classpath paths (be careful where/how your application is deployed) and the
+             newer version of Reflections (0.9.6) is hopeless.  So we trust in Bill instead. -->
+        <dependency>
+            <groupId>net.sf.scannotation</groupId>
+            <artifactId>scannotation</artifactId>
+            <version>1.0.2</version>
+        </dependency>
+        <!-- Jackson JSON provider library is bundled with glassfish embedded but not with the real glassfish
+             so we need to include it in our application for deployment on co-located Glassfish to work -->
+        <dependency>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-jaxrs</artifactId>
+            <version>1.9.1</version>
+        </dependency>
+        <!-- Memcached client library resident in the local 3rd party repository on nexus -->
+        <dependency>
+            <groupId>net.spy.memcached</groupId>
+            <artifactId>spymemcached</artifactId>
+            <version>2.7.3</version>
+        </dependency>
+        <!-- Logging dependencies -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+        </dependency>
+
+        <!-- Jersey dependency required for web.xml JAX-RS entry point servlet definition -->
+        <dependency>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-server</artifactId>
+            <version>1.9.1</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Embedded Glassfish for EJBContainer (for integration testing) -->
+        <dependency>
+            <groupId>org.glassfish.extras</groupId>
+            <artifactId>glassfish-embedded-all</artifactId>
+        </dependency>
+        <!-- JEE6 dependency (also covers JSTL) -->
+        <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-api</artifactId>
+        </dependency>
+        <!-- Persistence dependency (already within Embedded Glassfish amazingly) -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Complex testing dependencies -->
+        <dependency>
+            <groupId>com.timepoorprogrammer</groupId>
+            <artifactId>test-framework</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Basic testing dependencies -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.easymock</groupId>
+            <artifactId>easymock</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-all</artifactId>
+        </dependency>
+        <!-- Ant tools for our custom Task implementation classes use during the build -->
+        <dependency>
+            <groupId>org.apache.ant</groupId>
+            <artifactId>ant</artifactId>
+            <version>1.7.0</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>

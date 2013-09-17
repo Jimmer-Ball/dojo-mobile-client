@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="3.0" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+
+    <!-- A servlet filter that intercepts service calls and returns GZIPPed content to clients
+         that ask for it via their Accept-Encoding header (a high percentage of mobile browsers should make use of this)-->
+    <filter>
+        <filter-name>StaticGZIPFilter</filter-name>
+        <filter-class>com.timepoorprogrammer.mobile.common.StaticGZIPFilter</filter-class>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>StaticGZIPFilter</filter-name>
+        <url-pattern>*.css</url-pattern>
+        <url-pattern>*.js</url-pattern>
+    </filter-mapping>
+
+    <servlet>
+        <!-- This should not need to be here, supposedly Glassfish is meant to automatically scan for JAX-RS
+             annotated classes.  But, through observation, in 3.1.1 embedded and stand-alone it does not. -->
+        <servlet-name>Jersey Web Application</servlet-name>
+        <servlet-class>com.sun.jersey.spi.container.servlet.ServletContainer</servlet-class>
+        <!-- Say where our annotated JAX-RS resources are and plugin our custom parsers for XML and JSON
+             to speed up startup -->
+        <init-param>
+            <param-name>com.sun.jersey.config.property.packages</param-name>
+            <param-value>
+                com.timepoorprogrammer.mobile.api.resource;com.timepoorprogrammer.mobile.api.service;com.timepoorprogrammer.mobile.system.providers
+            </param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>Jersey Web Application</servlet-name>
+        <url-pattern>/services/*</url-pattern>
+    </servlet-mapping>
+
+    <!-- Accessing the URL without a postfix should result in the index.jsp being displayed resulting in
+         full UI download -->
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+</web-app>

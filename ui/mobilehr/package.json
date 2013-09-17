@@ -1,0 +1,6 @@
+{
+	"name": "mobilehr",
+	"version":"1.0",
+    "description": "The bundled timepoorprogrammer.com Human Resources API User Interface and client",
+	"dojoBuild": "mobilehr.profile.js"
+}

@@ -1,0 +1,303 @@
+/* Standard mobile icon */
+.mobilehrIcon1 {
+    height: 29px;
+    width: 29px;
+    background: url("images/icon_29.png") no-repeat center center;
+}
+
+/* A preLoader div is displayed while the application is loaded behind the scenes via the mobile parser */
+#mobilehrPreLoader {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: url("images/preloading.gif") no-repeat center center;
+    position: absolute;
+    z-index: 999;
+}
+
+/* All initial, so pre-dojo-parsed "view" markup remains hidden till the mobile parser has done its stuff */
+.mobilehrIsHidden {
+    visibility: hidden;
+}
+
+/* Right side padding for input fields in a table (as per login view) */
+.mobilehrRightTableColumPad {
+    padding-right: 10px;
+}
+
+/* Width for input fields as a percentage of RHS table based display */
+.mobilehrInputWidth {
+    width: 100%
+}
+
+/* The error status div hidden */
+.mobilehrErrorStatusHidden {
+    text-align: center;
+    margin: 1%;
+    padding: 5px;
+    font-family: Helvetica, sans-serif;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #9d3d35;
+    visibility: hidden;
+}
+
+/* The error status div revealed */
+.mobilehrErrorStatusRevealed {
+    text-align: center;
+    margin: 1%;
+    padding: 5px;
+    font-family: Helvetica, sans-serif;
+    font-size: 10pt;
+    font-weight: bold;
+    color: #9d3d35;
+    visibility: visible;
+}
+
+.mobilehrInstructions {
+    text-align: center;
+    font-weight:bold;
+}
+
+.mobilehrLowerCaseInstructions {
+    text-align: center;
+}
+
+/*
+The logo that is from the internal website.  Is not nice, we need a proper one with a bit of pizazz
+*/
+.mobilehrLogo {
+/*    height: 100px;
+    background: white url("images/nga.png") no-repeat center;
+*/
+}
+
+/* List item text on the right in small font */
+.mobilehrListItemLeftSmallText {
+    font-size: 12px;
+}
+
+/* Default (Iphone) theme List item text on the right in small font aligned (via margin) with iconography */
+.mobilehrListItemRightSmallText {
+    font-weight: normal;
+    font-size: 12px;
+    margin: 14px 4px 0 0;
+    float: right;
+    line-height: normal;
+    position: relative;
+}
+
+/* Line style for top line of left element on of a list item */
+.mobilehrListItemLeftTop {
+    color: red;
+}
+
+/* Line style for bottom line of left element on of a list item */
+.mobilehrListItemLeftBottom {
+    color: blue;
+}
+
+/* Line style for top line of right element on of a list item */
+.mobilehrListItemRightTop {
+    color: red;
+    float: right;
+}
+
+/* Line style for bottom line of right element on of a list item */
+.mobilehrListItemRightBottom {
+    color: blue;
+    float: right;
+}
+
+/* Android theme List item text on the right in small font aligned (via margin) with iconography */
+.androidMobilehrListItemRightSmallText {
+    font-weight: normal;
+    font-size: 12px;
+    margin: 23px 4px 0 0;
+    float: right;
+    line-height: normal;
+    position: relative;
+}
+
+/* Centered DIV for contained markup that needs to be centered */
+.mobilehrCenteredDiv {
+     text-align: center;
+ }
+
+/* Centered DIV whose content is padded */
+.mobilehrCenteredPaddedDiv {
+    text-align: center;
+    padding: 8px;
+}
+
+/* Authorisation buttons styling: Authorise button */
+.mobilehrAuthoriseButton {
+    width: 120px;
+    font-weight: bold;
+}
+
+/* Authorisation buttons styling: Reject button */
+.mobilehrRejectButton {
+    width: 120px;
+    font-weight: bold;
+}
+
+/* Dialog styling: Overall dialog widget */
+.mobilehrDialog {
+    margin: 0;
+    outline: medium none;
+    padding: 10px;
+    position: absolute;
+    text-align: center;
+    z-index: 100;
+    border: 2px solid;
+    border-radius: 10px 10px 10px 10px;
+    background-color: #233260;
+    color: white;
+}
+
+/* Dialog styling: Container holding title, content and buttons */
+.mobilehrDialogContainer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* Dialog styling: Dialog title */
+.mobilehrDialogTitle {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    font-weight: bold;
+}
+
+/* Dialog styling: Dialog content message */
+.mobilehrDialogContent {
+    padding-top: 12px;
+    padding-bottom: 8px;
+}
+
+/* Dialog styling: Used to obscure the "background" application */
+.mobilehrDialogCover {
+    background-color: #000000;
+    opacity: 0.5;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99;
+}
+
+/* Auto-margin our text area input field and give it the same margin characteristics as a RoundRectList  */
+.mobilehrTextArea {
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 16px;
+}
+
+/* BookLeaveView: submit button */
+.mobilehrSubmitButton {
+    width: 120px;
+    font-weight: bold;
+}
+
+/* submit button with no width restriction allowing longer labels */
+.mobilehrSubmitButtonUnrestrictedWidth {
+    font-weight: bold;
+}
+
+/* styling for the buttons that can appear on the header bar */
+.mobilehrToolBarButton {
+    padding: 0 3px 0 3px;;
+}
+
+.mobilehrInfoToolBarButton {
+    padding: 0 3px 0px 3px;
+    margin-bottom: 5px;
+}
+
+/* ================================= */
+/*       Taken from TweetView        */
+/* ================================= */
+.android .mobilehrRefresh img {
+    margin-top: 3px;
+}
+
+.android .mblRoundRectList {
+    background-color: #000;
+    border: none;
+}
+
+.android .mobilehrTime {
+    color: #FFF;
+}
+
+.android .mblTabBarButtonTextBox {
+    color: #FFF;
+}
+
+.android .mblTabBar .mblTabButtonSelected {
+    background-color: transparent;
+    border-radius: 0;
+}
+
+.android .mblColorDefaultSet {
+    background: #FFC700;
+}
+
+/* data row display class */
+.fieldDisplayTable {
+    /* centre table within containing div */
+    margin-left: auto;
+    margin-right: auto;
+    /* ensure there are no gaps between cells so we can show the delimiters if we need to */
+    border-collapse:collapse;
+}
+
+
+/* individual cell styling */
+.fieldDisplayTable td {
+    padding: 5px;
+}
+
+.uiRowItemLabel {
+    font-weight: bold;
+}
+
+.mobilehrSearchDirectoryInputContainer {
+    padding: 0 5px 0 5px;
+}
+
+.mobilhrSearchDirectorySearchInput {
+    background-image: url("images/search_icon.png");
+    background-repeat: no-repeat;
+    background-position: 7px;
+    width: 90%;
+    padding: 5px 5px 5px 25px;
+    margin: 5px 0 5px;
+    /* may have to do this manually in the code on render */
+    -webkit-border-radius: 20px;
+}
+
+/* ================================= */
+/*       Spin Wheel Date Picker      */
+/* ================================= */
+
+div .mobilehrSpinWheelDatePicker {
+    width: 222px;
+}
+
+div .mobilehrSpinWheelTimePicker {
+    width: 148px;
+}
+
+div .mobilehrSpinWheelSlot {
+    width: 70px;
+}
+
+.mobilehrSpinWheelInstructions {
+    text-align: center;
+    font-weight: bold;
+    padding-bottom: 10px;
+}

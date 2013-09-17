@@ -1,0 +1,180 @@
+<project name="mobile-web" default="create.release.packaging" basedir="mobile-web">
+    <!-- ================================================================================== -->
+    <!-- These properties are either provided by the local maven pom.xml or set here if run -->
+    <!-- from ant as a stand-alone program without being over-ridden from parent pom.       -->
+    <!-- Common build settings required:-                                                   -->
+    <!--                                                                                    -->
+    <!-- ${module.basedir} base directory of maven module                                   -->
+    <!-- ${target.dir} is the location of the module build output                           -->
+    <!-- ${unpacked.war.name} is the name of the directory holding the unpacked war         -->
+    <!-- ${unpacked.war.dir} is the full path to the unpacked war directory                 -->
+    <!-- ${target.classes.dir} is the full path to the class files where we can find  -->
+    <!-- our custom Ant task implementations before the WAR is assembled                    -->
+    <!-- ================================================================================== -->
+    <property name="module.basedir" value="${basedir}"/>
+    <property name="web.module" value="${module.basedir}/mobile-web"/>
+    <property name="web.target.dir" value="${web.module}/target"/>
+    <property name="unpacked.war.name" value="mobile-web-1.0-SNAPSHOT"/>
+    <property name="unpacked.war.dir" value="${web.target.dir}/${unpacked.war.name}"/>
+    <property name="target.classes.dir" value="${web.target.dir}/classes"/>
+    <!-- ================================================================================== -->
+    <!-- Properties required for released persistence.xml:-                                 -->
+    <!--                                                                                    -->
+    <!-- ${release.ddl.generation} what the persistence provider should do on startup       -->
+    <!-- ${release.log.level} the logging level applied for the persistence provider        -->
+    <!-- ${release.database.read.datasource} The datasource for the READ database           -->
+    <!-- ${release.database.write.datasource} The datasource for the WRITE database         -->
+    <!-- ${release.database.bufferedWrite.datasource} The datasource for the AUDIT database         -->
+    <!-- ================================================================================== -->
+    <property name="release.ddl.generation" value="none"/>
+    <property name="release.log.level" value="INFO"/>
+    <property name="release.database.read.datasource" value="MYSQLReadPool-ds"/>
+    <property name="release.database.write.datasource" value="MYSQLWritePool-ds"/>
+    <property name="release.database.audit.datasource" value="MYSQLAuditPool-ds"/>
+    <property name="release.database.state.datasource" value="MYSQLStatePool-ds"/>
+    <!-- ============================================================= -->
+    <!-- Properties required for DOJO build process on a release build -->
+    <!-- ============================================================= -->
+    <property name="ui.src" value="${web.module}/src/main/ui"/>
+    <property name="dojo.src" value="${web.target.dir}/dojo-src"/>
+    <property name="dojo.release.name" value="mobile"/>
+    <property name="dojo.layer.name" value="mobilehr"/>
+    <property name="dojo.release.dir" value="${web.target.dir}/minimised_dojo"/>
+    <property name="deliberately.empty" value=""/>
+
+    <!-- ========================================================================================= -->
+    <!-- Create release packaging, so a minimised build of the dojo javascript client and UI by    -->
+    <!-- running the DOJO build tool using the profile release.profile.js held in the "ui" dir.    -->
+    <!--                                                                                           -->
+    <!-- Done at the pre-package stage of a "release" profile build.  Note the deliberately empty  -->
+    <!-- flag on the localeList.  It seems (at least to me) that with dojo 1.7.2 the build system  -->
+    <!-- mangles our own resource files meaning i18n doesn't work correctly in a minimised build.  -->
+    <!-- So, here I've let it know not to "optimise" ANY i18n resources, and ensured the pom.xml   -->
+    <!-- copies the files in mobilehr/nls as they are pre-minification to ensure we can still pick -->
+    <!-- the right lexicon in minimised form. Also we've not passed the releaseDir down as an      -->
+    <!-- argument as it causes a JS eval exception in DOJO 1.7.2's build system.  This is instead  -->
+    <!-- hard-coded in release.profile.js. Its all a bit flaky in the build system.                -->
+    <!-- ========================================================================================= -->
+    <target name="create.release.packaging" depends="add.persistence.xml">
+        <echo>create.release.packaging: Creating release packaged build in ${dojo.release.dir}</echo>
+        <delete dir="${dojo.release.dir}"/>
+        <exec executable="cmd"
+              dir="${dojo.src}/util/buildscripts"
+              spawn="false">
+            <arg value="/c"/>
+            <arg value="build.bat"/>
+            <arg value="profile=../../../../src/main/ui/release.profile.js"/>
+            <arg value="releaseName=${dojo.release.name}"/>
+            <arg value="localeList=${deliberately.empty}"/>
+        </exec>
+        <!-- GZIP the minimised application file dojo.js we have created in the exploded WAR directory -->
+        <antcall target="gzip.release"/>
+    </target>
+
+    <!-- ================================================================================= -->
+    <!-- Create the dev profile packaging: Copy in the unpacked UI to the target directory -->
+    <!-- ================================================================================= -->
+    <target name="create.dev.packaging" depends="copy.unpacked.dojo, add.persistence.xml">
+        <echo>create.dev.packaging: Creating dev packaged build</echo>
+        <delete quiet="true">
+            <fileset dir="${web.target.dir}/${unpacked.war.name}/${dojo.layer.name}"/>
+        </delete>
+        <echo>Copying the updated unpacked client and UI to target directory</echo>
+        <copy todir="${web.target.dir}/${unpacked.war.name}/${dojo.layer.name}">
+            <fileset dir="${ui.src}/${dojo.layer.name}"/>
+        </copy>
+    </target>
+
+    <!-- =============================================================== -->
+    <!-- Copy the key unpacked dojo-src elements to the target directory -->
+    <!-- =============================================================== -->
+    <target name="copy.unpacked.dojo" depends="unpacked.dojo.check" unless="unpacked.dojo.exists">
+        <echo>Copying unpacked dojo-src elements, dojo, dojox, and dijit to target directory</echo>
+        <copy todir="${web.target.dir}/${unpacked.war.name}/dojo">
+            <fileset dir="${dojo.src}/dojo"/>
+        </copy>
+        <copy todir="${web.target.dir}/${unpacked.war.name}/dijit">
+            <fileset dir="${dojo.src}/dijit"/>
+        </copy>
+        <copy todir="${web.target.dir}/${unpacked.war.name}/dojox">
+            <fileset dir="${dojo.src}/dojox"/>
+        </copy>
+    </target>
+
+    <!-- ====================================================== -->
+    <!-- See if the dojo, dojox, and dijit sub-dirs of dojo-src -->
+    <!-- already exist in the unpacked war directory            -->
+    <!-- ====================================================== -->
+    <target name="unpacked.dojo.check">
+        <condition property="unpacked.dojo.exists">
+            <and>
+                <available file="${web.target.dir}/${unpacked.war.name}/dojo" type="dir"/>
+                <available file="${web.target.dir}/${unpacked.war.name}/dijit" type="dir"/>
+                <available file="${web.target.dir}/${unpacked.war.name}/dojox" type="dir"/>
+            </and>
+        </condition>
+    </target>
+
+    <!-- ==================================================================== -->
+    <!-- Add the release version of persistence XML to the deployable archive -->
+    <!-- ==================================================================== -->
+    <target name="add.persistence.xml">
+        <echo>The value of release.ddl.generation is ${release.ddl.generation}</echo>
+        <echo>The value of release.log.level is ${release.log.level}</echo>
+        <echo>The value of release.database.read.datasource is ${release.database.read.datasource}</echo>
+        <echo>The value of release.database.write.datasource is ${release.database.write.datasource}</echo>
+        <echo>The value of release.database.audit.datasource is ${release.database.audit.datasource}</echo>
+        <echo>The value of release.database.state.datasource is ${release.database.state.datasource}</echo>
+        <mkdir dir="${basedir}/target/${unpacked.war.name}/WEB-INF/classes/META-INF"/>
+        <copy file="${basedir}/src/main/packaging-only-resources/META-INF/persistence.xml" overwrite="true"
+              tofile="${basedir}/target/${unpacked.war.name}/WEB-INF/classes/META-INF/persistence.xml" filtering="true">
+            <filterset>
+                <filter token="release.ddl.generation" value="${release.ddl.generation}"/>
+                <filter token="release.log.level" value="${release.log.level}"/>
+                <filter token="release.database.read.datasource" value="${release.database.read.datasource}"/>
+                <filter token="release.database.write.datasource" value="${release.database.write.datasource}"/>
+                <filter token="release.database.audit.datasource" value="${release.database.audit.datasource}"/>
+                <filter token="release.database.state.datasource" value="${release.database.state.datasource}"/>
+            </filterset>
+        </copy>
+    </target>
+
+    <!-- ================================================================ -->
+    <!-- GZIP the beast that is the minimised application dojo.js so that -->
+    <!-- clients which want GZIP content can get the service to provide   -->
+    <!-- the UI application in GZIP form.                                 -->
+    <!-- ================================================================ -->
+    <target name="gzip.release">
+        <echo>GZipping minimised application dojo.js</echo>
+        <echo>Searching for GZipEach class under ${target.classes.dir}</echo>
+        <taskdef name="gzipeach" classname="com.timepoorprogrammer.mobile.common.build.GZipEach" classpath="${target.classes.dir}"/>
+        <gzipeach>
+            <fileset dir="${dojo.release.dir}/mobile/dojo" includes="**/dojo.js"/>
+        </gzipeach>
+    </target>
+
+    <property environment="env"/>
+    <target name="start.general.memcached">
+        <echo message="Starting memcached general purpose node"/>
+        <exec executable="cmd" dir="${env.MEMCACHED_HOME}" spawn="true">
+            <arg value="/c"/>
+            <arg value="start_memcached_general_purpose_node.bat"/>
+        </exec>
+    </target>
+
+    <target name="start.state.memcached">
+        <echo message="Starting memcached service state node"/>
+        <exec executable="cmd" dir="${env.MEMCACHED_HOME}" spawn="true">
+            <arg value="/c"/>
+            <arg value="start_memcached_service_state_node.bat"/>
+        </exec>
+    </target>
+
+    <target name="stop.memcached">
+        <echo message="Terminating all local memcached processes"/>
+        <exec executable="cmd" dir="${env.MEMCACHED_HOME}" spawn="true">
+            <arg value="/c"/>
+            <arg value="stop_memcached.bat"/>
+        </exec>
+    </target>
+</project>

@@ -1,0 +1,7 @@
+/*
+    Copyright (c) 2011-2013, Timepoorprogrammer (timepoorprogrammer.com)
+    All rights reserved.
+
+    Some portions copyright (c) 2005-2012, The Dojo Foundation
+    All rights reserved.
+*/
